@@ -107,26 +107,32 @@ class ScannerController:
             }
 
     def compare_scans(self, baseline_scan_id: str, candidate_scan_id: str):
-        baseline = self.scans.get(baseline_scan_id)
-        candidate = self.scans.get(candidate_scan_id)
-        if not baseline or not candidate:
-            return None
+        with self.lock:
+            baseline = self.scans.get(baseline_scan_id)
+            candidate = self.scans.get(candidate_scan_id)
+            if not baseline or not candidate:
+                return None
 
-        base_risk = calculate_risk_score(baseline.findings)
-        cand_risk = calculate_risk_score(candidate.findings)
-        base_dist = Counter(f.get("severity", "Low") for f in baseline.findings)
-        cand_dist = Counter(f.get("severity", "Low") for f in candidate.findings)
+            baseline_findings = list(baseline.findings)
+            candidate_findings = list(candidate.findings)
+            baseline_metrics = dict(baseline.metrics)
+            candidate_metrics = dict(candidate.metrics)
+
+        base_risk = calculate_risk_score(baseline_findings)
+        cand_risk = calculate_risk_score(candidate_findings)
+        base_dist = Counter(f.get("severity", "Low") for f in baseline_findings)
+        cand_dist = Counter(f.get("severity", "Low") for f in candidate_findings)
 
         return {
             "baseline_scan_id": baseline_scan_id,
             "candidate_scan_id": candidate_scan_id,
             "risk_score_delta": cand_risk["score"] - base_risk["score"],
             "severity_delta": {sev: cand_dist.get(sev, 0) - base_dist.get(sev, 0) for sev in ["Critical", "High", "Medium", "Low"]},
-            "findings_delta": len(candidate.findings) - len(baseline.findings),
-            "latency_delta_ms": candidate.metrics.get("post_scan_http", {}).get("avg_latency_ms", 0)
-            - baseline.metrics.get("post_scan_http", {}).get("avg_latency_ms", 0),
-            "blocked_rate_delta": candidate.metrics.get("simulation", {}).get("blocked_rate", 0)
-            - baseline.metrics.get("simulation", {}).get("blocked_rate", 0),
+            "findings_delta": len(candidate_findings) - len(baseline_findings),
+            "latency_delta_ms": candidate_metrics.get("post_scan_http", {}).get("avg_latency_ms", 0)
+            - baseline_metrics.get("post_scan_http", {}).get("avg_latency_ms", 0),
+            "blocked_rate_delta": candidate_metrics.get("simulation", {}).get("blocked_rate", 0)
+            - baseline_metrics.get("simulation", {}).get("blocked_rate", 0),
         }
 
     def get_report_html(self, scan_id: str):

@@ -6,7 +6,7 @@ from pydantic import BaseModel, HttpUrl
 from scanner_controller import scanner_controller
 
 
-app = FastAPI(title="AutoVuln API", version="1.1.0")
+app = FastAPI(title="AutoVuln API", version="1.1.1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -37,20 +37,20 @@ def start_scan(payload: ScanRequest):
     return {"scan_id": scan_id}
 
 
-@app.get("/scan/{scan_id}")
-def get_scan(scan_id: str):
-    scan = scanner_controller.get_scan(scan_id)
-    if not scan:
-        raise HTTPException(status_code=404, detail="Scan not found")
-    return scan
-
-
 @app.get("/scan/compare")
 def compare_scans(baseline_scan_id: str, candidate_scan_id: str):
     data = scanner_controller.compare_scans(baseline_scan_id, candidate_scan_id)
     if not data:
         raise HTTPException(status_code=404, detail="Unable to compare scans")
     return data
+
+
+@app.get("/scan/{scan_id}")
+def get_scan(scan_id: str):
+    scan = scanner_controller.get_scan(scan_id)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    return scan
 
 
 @app.get("/report/{scan_id}", response_class=HTMLResponse)
