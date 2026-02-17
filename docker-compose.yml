@@ -1,0 +1,35 @@
+services:
+  kali:
+    build:
+      context: .
+      dockerfile: kali/dockerfile
+    container_name: kali_scanner
+    command: ["sleep", "infinity"]
+
+  backend:
+    build:
+      context: backend
+      dockerfile: Dockerfile
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+      - ./reports:/app/reports
+    ports:
+      - "8000:8000"
+    depends_on:
+      - kali
+
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - backend
